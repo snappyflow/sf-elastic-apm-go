@@ -1,7 +1,6 @@
-# go_apm
+# sf-elastic-apm-go
 
-This provides the instrumentation modules for the Go web frameworks.
-Currently this supports Goji web framework (https://github.com/zenazn/goji).
+This provides the instrumentation modules to trace your Go applications.
 
 
 ## Pre-requisite
@@ -15,7 +14,7 @@ go get go.elastic.co/apm/v2
 
 **module/apmgoji**
 
-Package apmgoji provides middleware for the Goji web framework. This middleware traces all the incoming requests and reports each transaction to the APM server.
+Package apmgoji provides middleware for the Goji web framework (https://github.com/zenazn/goji). This middleware traces all the incoming requests and reports each transaction to the APM server.
 
 The apmgoji middleware will also recover panics and send them to Elastic APM.
 
@@ -39,7 +38,7 @@ Package apmgoredisv8 provides a means of instrumenting go-redis/redis for v8 so 
 ```go
 import (
 	"go.elastic.co/apm/v2"
-	
+
 	"github.com/go-redis/redis/v8"
 	"github.com/snappyflow/sf-elastic-apm-go/module/apmgoredisv8"
 )
