@@ -37,8 +37,6 @@ Package apmgoredisv8 provides a means of instrumenting go-redis/redis for v8 so 
 
 ```go
 import (
-	"go.elastic.co/apm/v2"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/snappyflow/sf-elastic-apm-go/module/apmgoredisv8"
 )
@@ -61,8 +59,6 @@ func handleRequest(w http.ResponseWriter, req *http.Request) {
 	val, err := redisClient.Get(req.Context(), "key1").Result()
 	if err != nil {
 		fmt.Println(err)
-		e := apm.CaptureError(req.Context(), err)
-		e.Send()
 	}
 	...
 }
