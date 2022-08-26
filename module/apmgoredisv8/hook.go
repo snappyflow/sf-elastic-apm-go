@@ -32,6 +32,11 @@ func (r *hook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Cont
 
 // AfterProcess ends the initiated span from BeforeProcess
 func (r *hook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
+	redisErr := cmd.Err()
+	if redisErr != nil {
+		e := apm.CaptureError(ctx, redisErr)
+		e.Send()
+	}
 	if span := apm.SpanFromContext(ctx); span != nil {
 		span.End()
 	}
@@ -63,6 +68,13 @@ func (r *hook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (c
 
 // AfterProcess ends the initiated span from BeforeProcessPipeline
 func (r *hook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
+	for _, cmd := range cmds {
+		redisErr := cmd.Err()
+		if redisErr != nil {
+			e := apm.CaptureError(ctx, redisErr)
+			e.Send()
+		}
+	}
 	if span := apm.SpanFromContext(ctx); span != nil {
 		span.End()
 	}
