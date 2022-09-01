@@ -2,9 +2,9 @@ package apmmongo
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
@@ -112,14 +112,19 @@ func (c *commandMonitor) started(ctx context.Context, event *event.CommandStarte
 }
 
 func (c *commandMonitor) succeeded(ctx context.Context, event *event.CommandSucceededEvent) {
-	c.finished(ctx, &event.CommandFinishedEvent)
+	ifErr, errMsg := getErrMsg(event)
+	if ifErr {
+		c.finished(ctx, &event.CommandFinishedEvent, errMsg)
+	} else {
+		c.finished(ctx, &event.CommandFinishedEvent, nil)
+	}
 }
 
 func (c *commandMonitor) failed(ctx context.Context, event *event.CommandFailedEvent) {
-	c.finished(ctx, &event.CommandFinishedEvent)
+	c.finished(ctx, &event.CommandFinishedEvent, fmt.Errorf("%s", event.Failure))
 }
 
-func (c *commandMonitor) finished(ctx context.Context, event *event.CommandFinishedEvent) {
+func (c *commandMonitor) finished(ctx context.Context, event *event.CommandFinishedEvent, err error) {
 	key := commandKey{connectionID: event.ConnectionID, requestID: event.RequestID}
 
 	c.mu.Lock()
@@ -131,7 +136,11 @@ func (c *commandMonitor) finished(ctx context.Context, event *event.CommandFinis
 	delete(c.spans, key)
 	c.mu.Unlock()
 
-	span.Duration = time.Duration(event.DurationNanos)
+	if err != nil {
+		e := apm.CaptureError(apm.ContextWithSpan(ctx, span), err) // ctx here is the req.Context()
+		e.Send()
+	}
+
 	span.End()
 }
 
@@ -181,3 +190,72 @@ func collectionName(commandName string, command bson.Raw) (string, bool) {
 
 // Option sets options for tracing MongoDB commands.
 type Option func(*commandMonitor)
+
+func getErrMsg(event *event.CommandSucceededEvent) (bool, error) {
+	elems, err := event.Reply.Elements()
+	if err == nil {
+		for _, elem := range elems {
+			switch elem.Key() {
+			case "errmsg":
+				if str, okay := elem.Value().StringValueOK(); okay {
+					return true, fmt.Errorf("%s", str)
+				}
+			case "writeErrors":
+				ifWriteErr, errMsg := getWriteErrors(event)
+				if ifWriteErr {
+					return true, errMsg
+				}
+			case "writeConcernError":
+				ifWriteConcernErr, errMsg := getWriteConcernError(event)
+				if ifWriteConcernErr {
+					return true, errMsg
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
+// getWriteErrors fetches for the writeErrors from the command reply
+func getWriteErrors(event *event.CommandSucceededEvent) (bool, error) {
+	writeErrors := event.Reply.Lookup("writeErrors")
+	if len(writeErrors.Value) > 0 {
+		bsonArray, ok := writeErrors.ArrayOK()
+		if ok {
+			vals, err := bsonArray.Values()
+			if err == nil {
+				var we string
+				for i, val := range vals {
+					doc, ok := val.DocumentOK()
+					if ok {
+						if errmsg, exists := doc.Lookup("errmsg").StringValueOK(); exists && len(errmsg) > 0 {
+							if i != 0 {
+								we = we + ", " + errmsg
+							} else {
+								we = we + errmsg
+							}
+						}
+					}
+				}
+				if len(we) > 0 {
+					return true, fmt.Errorf("%s", we)
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
+// getWriteConcernErrors fetches for the writeErrors from the command reply
+func getWriteConcernError(event *event.CommandSucceededEvent) (bool, error) {
+	writeConcernErrors := event.Reply.Lookup("writeConcernError")
+	if len(writeConcernErrors.Value) > 0 {
+		doc, ok := writeConcernErrors.DocumentOK()
+		if ok {
+			if errmsg, exists := doc.Lookup("errmsg").StringValueOK(); exists && len(errmsg) > 0 {
+				return true, fmt.Errorf("%s", errmsg)
+			}
+		}
+	}
+	return false, nil
+}

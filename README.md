@@ -87,7 +87,7 @@ func handleRequest(w http.ResponseWriter, req *http.Request) {
 	// Pass the current transaction context in Redis call
 	// Redis commands will be reported as spans within the current transaction.
 	collection := mongoClient.Database("db").Collection("coll")
-	cur, err := collection.Find(r.Context(), bson.D{})
+	cur, err := collection.Find(req.Context(), bson.D{})
 	...
 }
 ```
