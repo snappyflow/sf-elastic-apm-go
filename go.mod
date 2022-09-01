@@ -7,4 +7,5 @@ require (
 	github.com/zenazn/goji v1.0.1
 	go.elastic.co/apm/module/apmhttp/v2 v2.1.0
 	go.elastic.co/apm/v2 v2.1.0
+	go.mongodb.org/mongo-driver v1.10.1
 )

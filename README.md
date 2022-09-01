@@ -63,3 +63,31 @@ func handleRequest(w http.ResponseWriter, req *http.Request) {
 	...
 }
 ```
+
+
+**module/apmmongo**
+
+Package apmmongo provides a means of instrumenting the MongoDB Go Driver (https://github.com/mongodb/mongo-go-driver), so that MongoDB commands are reported as spans within the current transaction.
+
+```go
+import (
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"go.elastic.co/apm/module/apmmongo/v2"
+)
+
+var mongoClient, _ = mongo.Connect(
+	context.Background(),
+	options.Client().SetMonitor(apmmongo.CommandMonitor()).ApplyURI("mongodb://localhost:27017"),
+)
+
+func handleRequest(w http.ResponseWriter, req *http.Request) {
+	// Pass the current transaction context in Redis call
+	// Redis commands will be reported as spans within the current transaction.
+	collection := mongoClient.Database("db").Collection("coll")
+	cur, err := collection.Find(r.Context(), bson.D{})
+	...
+}
+```
