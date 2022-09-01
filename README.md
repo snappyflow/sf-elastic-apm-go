@@ -67,7 +67,7 @@ func handleRequest(w http.ResponseWriter, req *http.Request) {
 
 **module/apmmongo**
 
-Package apmmongo provides a means of instrumenting the MongoDB Go Driver (https://github.com/mongodb/mongo-go-driver), so that MongoDB commands are reported as spans within the current transaction.
+Package apmmongo provides a means of instrumenting the MongoDB Go Driver (mongodb/mongo-go-driver), so that MongoDB commands are reported as spans within the current transaction.
 
 ```go
 import (
@@ -75,7 +75,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"go.elastic.co/apm/module/apmmongo/v2"
+	"github.com/snappyflow/sf-elastic-apm-go/module/apmmongo"
 )
 
 var mongoClient, _ = mongo.Connect(
